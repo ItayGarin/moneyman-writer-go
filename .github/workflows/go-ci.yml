@@ -24,3 +24,7 @@ jobs:
 
     - name: Test
       run: go test ./...
+      env:
+        GCS_TEST_BUCKET: ${{ secrets.GCS_TEST_BUCKET }}
+        GCS_TEST_FILE: ${{ secrets.GCS_TEST_FILE }}
+        GCS_TEST_CREDS: ${{ secrets.GCS_TEST_CREDS }}
