@@ -2,7 +2,6 @@ package cloud_storage_test
 
 import (
 	"context"
-	"fmt"
 	cloud_storage "moneyman-writer-go/internal/adapter/google/cloud-storage"
 	"os"
 	"testing"
@@ -17,8 +16,10 @@ func TestGcsDownloader_Download(t *testing.T) {
 	path := os.Getenv("GCS_TEST_FILE")
 	creds := os.Getenv("GCS_TEST_CREDS")
 
-	fmt.Println(bucket)
-	fmt.Println(path)
+	assert.NotEmptyf(t, bucket, "GCS_TEST_BUCKET is empty")
+	assert.NotEmptyf(t, path, "GCS_TEST_FILE is empty")
+	assert.NotEmptyf(t, creds, "GCS_TEST_CREDS is empty")
+
 	d, err := cloud_storage.NewGcsDownloader(ctx, option.WithCredentialsJSON([]byte(creds)))
 	assert.NoError(t, err)
 

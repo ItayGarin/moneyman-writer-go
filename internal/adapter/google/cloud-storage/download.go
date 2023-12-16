@@ -24,6 +24,10 @@ func NewGcsDownloader(ctx context.Context, opts ...option.ClientOption) (*GcsDow
 }
 
 func (d *GcsDownloader) Download(ctx context.Context, bucket string, path string) ([]byte, error) {
+	if d.client == nil {
+		return nil, fmt.Errorf("client is nil")
+	}
+
 	b := d.client.Bucket(bucket)
 	obj := b.Object(path)
 	reader, err := obj.NewReader(ctx)
