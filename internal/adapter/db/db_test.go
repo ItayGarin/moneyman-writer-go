@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"ariga.io/atlas-go-sdk/atlasexec"
 	"github.com/docker/docker/api/types/container"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
@@ -64,43 +63,10 @@ func TestMain(m *testing.M) {
 	dsn = fmt.Sprintf("host=%s port=%s user=user password=password dbname=test_db sslmode=disable", dbHost, dbPort)
 	url = fmt.Sprintf("postgres://user:password@%s:%s/%s?sslmode=%s", dbHost, dbPort, "test_db", "disable")
 
-	runMigrations()
+	RunMigrations(ctx, url)
 
 	exitCode := m.Run()
 	os.Exit(exitCode)
-}
-
-func runMigrations() {
-	workdir, err := atlasexec.NewWorkingDir(
-		atlasexec.WithMigrations(
-			os.DirFS("./migrations"),
-		),
-	)
-	if err != nil {
-		log.Fatalf("failed to load working directory: %v", err)
-	}
-	defer workdir.Close()
-
-	fmt.Printf("Applying migrations to %s\n", url)
-	client, err := atlasexec.NewClient(workdir.Path(), "atlas")
-	if err != nil {
-		log.Fatalf("failed to initialize client: %v", err)
-	}
-	status, err := client.MigrateStatus(context.Background(), &atlasexec.MigrateStatusParams{
-		URL: url,
-	})
-	if err != nil {
-		log.Fatalf("failed to get migration status: %v", err)
-	}
-	fmt.Printf("Status: %v\n", status)
-
-	res, err := client.MigrateApply(context.Background(), &atlasexec.MigrateApplyParams{
-		URL: url,
-	})
-	if err != nil {
-		log.Fatalf("failed to apply migrations: %v", err)
-	}
-	fmt.Printf("Applied %d migrations\n", len(res.Applied))
 }
 
 func makeMockTransaction() *sql.InsertTransactionParams {
@@ -129,7 +95,7 @@ func makeMockTransaction() *sql.InsertTransactionParams {
 
 func TestDB_SingleWrite_NoConflict_shouldSucceed(t *testing.T) {
 	ctx := context.Background()
-	c, err := NewClient(ctx, dsn)
+	c, err := NewClient(ctx, url)
 	require.NoError(t, err)
 
 	mockTransaction := makeMockTransaction()
@@ -146,7 +112,7 @@ func TestDB_SingleWrite_NoConflict_shouldSucceed(t *testing.T) {
 
 func TestDB_SingleWrite_HasConflict_shouldSucceed(t *testing.T) {
 	ctx := context.Background()
-	c, err := NewClient(ctx, dsn)
+	c, err := NewClient(ctx, url)
 	require.NoError(t, err)
 
 	for i := 0; i < 2; i++ {
