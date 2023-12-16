@@ -16,6 +16,9 @@ jobs:
       with:
         go-version: '1.21.1'  # Use the version of Go your project requires
 
+    - name: Install Atlas
+      run: curl -sSf https://atlasgo.sh | sh
+
     - name: Check out code
       uses: actions/checkout@v3
 
