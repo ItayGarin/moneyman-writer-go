@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"moneyman-writer-go/internal/core"
 	x "moneyman-writer-go/internal/utils/logger"
 
 	"github.com/go-chi/chi/v5"
@@ -14,13 +15,14 @@ type Router struct {
 	mux *chi.Mux
 }
 
-func MakeRouter() *Router {
+func MakeRouter(svc *core.Service) *Router {
 	r := chi.NewRouter()
+	controller := NewRestController(svc)
 
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Logger)
-	r.Get("/healthz", handleHealth)
-	r.Post("/gcs/transactions", handleGcsTransactionsUploadedEvent)
+	r.Get("/healthz", controller.HandleHealth)
+	r.Post("/gcs/transactions", controller.HandleGcsTransactionsUploadedEvent)
 
 	return &Router{
 		mux: r,

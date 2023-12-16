@@ -1,21 +1,27 @@
 package main
 
 import (
-	"encoding/json"
-	"moneyman-writer-go/internal/model"
+	"context"
+	"moneyman-writer-go/internal/adapter/db"
+	cloud_storage "moneyman-writer-go/internal/adapter/google/cloud-storage"
+	"moneyman-writer-go/internal/core"
+	"moneyman-writer-go/internal/driver/rest"
 	x "moneyman-writer-go/internal/utils/logger"
-	"os"
 
 	"github.com/kelseyhightower/envconfig"
+	"google.golang.org/api/option"
 )
 
 type Config struct {
-	Port int `default:"8080"`
+	Port          int    `default:"8080"`
+	PostgresUrl   string `required:"true" split_words:"true"`
+	MigrationsDir string `required:"true" split_words:"true"`
+	GcsCreds      string `required:"true" split_words:"true"`
 }
 
 func parseEnvConfig() *Config {
 	c := Config{}
-	err := envconfig.Process("moneyman-writer", &c)
+	err := envconfig.Process("", &c)
 	if err != nil {
 		x.Logger().Fatalw("failed to process env vars", "error", err)
 	}
@@ -24,22 +30,25 @@ func parseEnvConfig() *Config {
 }
 
 func main() {
-	// c := parseEnvConfig()
-	// r := rest.MakeRouter()
-	// r.Serve(c.Port)
+	ctx := context.Background()
+	c := parseEnvConfig()
 
-	data, err := os.ReadFile(os.Args[1])
+	client, err := db.NewClient(ctx, c.PostgresUrl)
 	if err != nil {
-		x.Logger().Fatalw("failed to read file", "error", err)
+		x.Logger().Fatalw("failed to initialize db client", "error", err)
+	}
+	err = db.RunMigrations(ctx, c.PostgresUrl, c.MigrationsDir)
+	if err != nil {
+		x.Logger().Fatalw("failed to run migrations", "error", err)
 	}
 
-	x.Logger().Infow("file read", "len", len(data))
-
-	txns := []model.Transaction{}
-	err = json.Unmarshal(data, &txns)
+	repo := db.NewPostgresTransactionRepo(client)
+	downloader, err := cloud_storage.NewGcsDownloader(ctx, option.WithCredentialsJSON([]byte(c.GcsCreds)))
 	if err != nil {
-		x.Logger().Fatalw("failed to unmarshal json", "error", err)
+		x.Logger().Fatalw("failed to initialize gcs downloader", "error", err)
 	}
 
-	x.Logger().Infow("transactions read", "len", len(txns))
+	svc := core.NewService(repo, downloader)
+	r := rest.MakeRouter(svc)
+	r.Serve(c.Port)
 }
