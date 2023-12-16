@@ -7,14 +7,16 @@ package sql
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const getTransactions = `-- name: GetTransactions :many
+const getAllTransactions = `-- name: GetAllTransactions :many
 SELECT id, identifier, type, status, date, processed_date, original_amount, original_currency, charged_amount, charged_currency, description, memo, category, account, company_id, hash FROM exp_transactions
 `
 
-func (q *Queries) GetTransactions(ctx context.Context) ([]ExpTransaction, error) {
-	rows, err := q.db.Query(ctx, getTransactions)
+func (q *Queries) GetAllTransactions(ctx context.Context) ([]ExpTransaction, error) {
+	rows, err := q.db.Query(ctx, getAllTransactions)
 	if err != nil {
 		return nil, err
 	}
@@ -48,4 +50,93 @@ func (q *Queries) GetTransactions(ctx context.Context) ([]ExpTransaction, error)
 		return nil, err
 	}
 	return items, nil
+}
+
+const getTransactionByHash = `-- name: GetTransactionByHash :one
+SELECT id, identifier, type, status, date, processed_date, original_amount, original_currency, charged_amount, charged_currency, description, memo, category, account, company_id, hash FROM exp_transactions WHERE hash = $1
+`
+
+func (q *Queries) GetTransactionByHash(ctx context.Context, hash string) (ExpTransaction, error) {
+	row := q.db.QueryRow(ctx, getTransactionByHash, hash)
+	var i ExpTransaction
+	err := row.Scan(
+		&i.ID,
+		&i.Identifier,
+		&i.Type,
+		&i.Status,
+		&i.Date,
+		&i.ProcessedDate,
+		&i.OriginalAmount,
+		&i.OriginalCurrency,
+		&i.ChargedAmount,
+		&i.ChargedCurrency,
+		&i.Description,
+		&i.Memo,
+		&i.Category,
+		&i.Account,
+		&i.CompanyID,
+		&i.Hash,
+	)
+	return i, err
+}
+
+const insertTransaction = `-- name: InsertTransaction :exec
+INSERT INTO exp_transactions (
+    identifier, 
+    type, 
+    status, 
+    date, 
+    processed_date, 
+    original_amount, 
+    original_currency, 
+    charged_amount, 
+    charged_currency, 
+    description, 
+    memo, 
+    category, 
+    account, 
+    company_id, 
+    hash
+) VALUES 
+( $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+ON CONFLICT (hash) DO NOTHING
+`
+
+type InsertTransactionParams struct {
+	Identifier       string
+	Type             string
+	Status           string
+	Date             pgtype.Timestamptz
+	ProcessedDate    pgtype.Timestamptz
+	OriginalAmount   float64
+	OriginalCurrency string
+	ChargedAmount    float64
+	ChargedCurrency  string
+	Description      string
+	Memo             string
+	Category         string
+	Account          string
+	CompanyID        string
+	Hash             string
+}
+
+func (q *Queries) InsertTransaction(ctx context.Context, arg InsertTransactionParams) error {
+	_, err := q.db.Exec(ctx, insertTransaction,
+		arg.Identifier,
+		arg.Type,
+		arg.Status,
+		arg.Date,
+		arg.ProcessedDate,
+		arg.OriginalAmount,
+		arg.OriginalCurrency,
+		arg.ChargedAmount,
+		arg.ChargedCurrency,
+		arg.Description,
+		arg.Memo,
+		arg.Category,
+		arg.Account,
+		arg.CompanyID,
+		arg.Hash,
+	)
+	return err
 }
