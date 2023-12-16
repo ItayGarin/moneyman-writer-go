@@ -20,4 +20,8 @@ type Transaction struct {
 	Hash             string    `json:"hash"`
 }
 
-type TransactionsFileUploadedEvent struct{}
+type TransactionsFileUploadedEvent struct {
+	Bucket      string    `json:"bucket"`
+	Name        string    `json:"name"`
+	TimeCreated time.Time `json:"timeCreated"`
+}

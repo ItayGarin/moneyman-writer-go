@@ -2,68 +2,26 @@ package db
 
 import (
 	"context"
-	"fmt"
-	"log"
 	"moneyman-writer-go/internal/adapter/db/sqlc/sql"
+	"moneyman-writer-go/internal/utils/test/containers"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-var dsn string
 var url string
 
 func TestMain(m *testing.M) {
-	// Context for the container
 	ctx := context.Background()
 
-	// Define the PostgreSQL container request
-	req := testcontainers.ContainerRequest{
-		Image:        "postgres:latest",
-		ExposedPorts: []string{"5432/tcp"},
-		Env: map[string]string{
-			"POSTGRES_DB":       "test_db",
-			"POSTGRES_USER":     "user",
-			"POSTGRES_PASSWORD": "password",
-		},
-		WaitingFor: wait.ForAll(
-			wait.ForListeningPort("5432/tcp"),
-			wait.ForLog("database system is ready to accept connections").WithOccurrence(2).WithStartupTimeout(5*time.Second),
-		),
-		HostConfigModifier: func(config *container.HostConfig) {
-			config.AutoRemove = true
-		},
-	}
-	postgresContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: req,
-		Started:          true,
-	})
-	if err != nil {
-		log.Fatalf("Failed to start container: %s", err)
-	}
-	defer postgresContainer.Terminate(ctx)
+	pgContainer := containers.NewPostgresTestContainer()
+	defer pgContainer.Terminate(ctx)
 
-	mappedPort, err := postgresContainer.MappedPort(ctx, "5432")
-	if err != nil {
-		log.Fatalf("Failed to get mapped port: %s", err)
-	}
-
-	// Build the database connection string
-	dbHost, err := postgresContainer.Host(ctx)
-	if err != nil {
-		log.Fatalf("Failed to get container IP: %s", err)
-	}
-	dbPort := mappedPort.Port()
-	dsn = fmt.Sprintf("host=%s port=%s user=user password=password dbname=test_db sslmode=disable", dbHost, dbPort)
-	url = fmt.Sprintf("postgres://user:password@%s:%s/%s?sslmode=%s", dbHost, dbPort, "test_db", "disable")
-
-	RunMigrations(ctx, url)
+	RunMigrations(ctx, pgContainer.URL)
+	url = pgContainer.URL
 
 	exitCode := m.Run()
 	os.Exit(exitCode)
