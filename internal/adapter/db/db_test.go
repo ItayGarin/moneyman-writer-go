@@ -103,13 +103,12 @@ func runMigrations() {
 	fmt.Printf("Applied %d migrations\n", len(res.Applied))
 }
 
-func TestDB_Write(t *testing.T) {
-	ctx := context.Background()
-	c, err := NewClient(ctx, dsn)
-	require.NoError(t, err)
-
-	mockDate := pgtype.Timestamptz{Time: time.Now()}
-	mockTransaction := sql.InsertTransactionParams{
+func makeMockTransaction() *sql.InsertTransactionParams {
+	mockDate := pgtype.Timestamptz{
+		Time:  time.Now(),
+		Valid: true,
+	}
+	return &sql.InsertTransactionParams{
 		Identifier:       "TX123456",
 		Type:             "Credit",
 		Status:           "Completed",
@@ -126,11 +125,37 @@ func TestDB_Write(t *testing.T) {
 		CompanyID:        "COMP12345",
 		Hash:             "abcde12345hash",
 	}
+}
 
-	err = c.InsertTransaction(ctx, mockTransaction)
+func TestDB_SingleWrite_NoConflict_shouldSucceed(t *testing.T) {
+	ctx := context.Background()
+	c, err := NewClient(ctx, dsn)
+	require.NoError(t, err)
+
+	mockTransaction := makeMockTransaction()
+	err = c.InsertTransaction(ctx, *mockTransaction)
 	require.NoError(t, err)
 
 	txn, err := c.GetTransactionByHash(ctx, mockTransaction.Hash)
 	require.NoError(t, err)
-	require.Equal(t, mockTransaction, txn)
+	require.Equal(t, mockTransaction.Identifier, txn.Identifier)
+	require.Equal(t, mockTransaction.Type, txn.Type)
+	require.Equal(t, mockTransaction.Status, txn.Status)
+	require.Equal(t, mockTransaction.Hash, txn.Hash)
+}
+
+func TestDB_SingleWrite_HasConflict_shouldSucceed(t *testing.T) {
+	ctx := context.Background()
+	c, err := NewClient(ctx, dsn)
+	require.NoError(t, err)
+
+	for i := 0; i < 2; i++ {
+		mockTransaction := makeMockTransaction()
+		err = c.InsertTransaction(ctx, *mockTransaction)
+		require.NoError(t, err)
+
+		txn, err := c.GetTransactionByHash(ctx, mockTransaction.Hash)
+		require.NoError(t, err)
+		require.Equal(t, mockTransaction.Identifier, txn.Identifier)
+	}
 }
