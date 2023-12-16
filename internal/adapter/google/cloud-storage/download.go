@@ -3,6 +3,7 @@ package cloud_storage
 import (
 	"context"
 	"fmt"
+	"io"
 
 	"cloud.google.com/go/storage"
 	"google.golang.org/api/option"
@@ -36,13 +37,7 @@ func (d *GcsDownloader) Download(ctx context.Context, bucket string, path string
 	}
 	defer reader.Close()
 
-	attrs, err := obj.Attrs(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get object attributes: %w", err)
-	}
-
-	contents := make([]byte, attrs.Size)
-	_, err = reader.Read(contents)
+	contents, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read object: %w", err)
 	}

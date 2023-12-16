@@ -20,7 +20,11 @@ func TestMain(m *testing.M) {
 	pgContainer := containers.NewPostgresTestContainer()
 	defer pgContainer.Terminate(ctx)
 
-	RunMigrations(ctx, pgContainer.URL)
+	err := RunMigrations(ctx, pgContainer.URL, "./migrations")
+	if err != nil {
+		panic(err)
+	}
+
 	url = pgContainer.URL
 
 	exitCode := m.Run()

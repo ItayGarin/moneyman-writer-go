@@ -25,5 +25,5 @@ func TestGcsDownloader_Download(t *testing.T) {
 
 	data, err := d.Download(ctx, bucket, path)
 	assert.NoError(t, err)
-	assert.Equal(t, len(data), 5526)
+	assert.Equal(t, len(data), 53128)
 }

@@ -38,10 +38,10 @@ func NewClient(ctx context.Context, conn string) (*sql.Queries, error) {
 	return sql.New(c), nil
 }
 
-func RunMigrations(ctx context.Context, conn string) error {
+func RunMigrations(ctx context.Context, conn string, migrationsDir string) error {
 	workdir, err := atlasexec.NewWorkingDir(
 		atlasexec.WithMigrations(
-			os.DirFS("./migrations"),
+			os.DirFS(migrationsDir),
 		),
 	)
 	if err != nil {
