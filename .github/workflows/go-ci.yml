@@ -55,7 +55,7 @@ jobs:
         gcloud auth configure-docker us-east1-docker.pkg.dev --quiet
 
     - name: Build image
-      run: docker build . --tag us-east1-docker.pkg.dev/expenses-407515/moneyman-writer:${{ env.IMAGE_TAG }}
+      run: docker build . --tag us-east1-docker.pkg.dev/expenses-407515/moneyman-writer/moneyman-writer:${{ env.IMAGE_TAG }}
 
     - name: Push image
-      run: docker push us-east1-docker.pkg.dev/expenses-407515/moneyman-writer:${{ env.IMAGE_TAG }}
+      run: docker push us-east1-docker.pkg.dev/expenses-407515/moneyman-writer/moneyman-writer:${{ env.IMAGE_TAG }}
