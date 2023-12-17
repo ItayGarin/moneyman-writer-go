@@ -54,7 +54,8 @@ func RunMigrations(ctx context.Context, conn string, migrationsDir string) error
 		return fmt.Errorf("failed to initialize client: %w", err)
 	}
 	_, err = client.MigrateApply(context.Background(), &atlasexec.MigrateApplyParams{
-		URL: conn,
+		URL:             conn,
+		RevisionsSchema: "public",
 	})
 	if err != nil {
 		return fmt.Errorf("failed to apply migrations: %w", err)
