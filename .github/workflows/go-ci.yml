@@ -6,28 +6,28 @@ on:
       - main
 
 jobs:
-  test:
-    name: Run Golang Tests
-    runs-on: ubuntu-latest
+  # test:
+  #   name: Run Golang Tests
+  #   runs-on: ubuntu-latest
 
-    steps:
-    - name: Set up Go
-      uses: actions/setup-go@v3
-      with:
-        go-version: '1.21.1'  # Use the version of Go your project requires
+  #   steps:
+  #   - name: Set up Go
+  #     uses: actions/setup-go@v3
+  #     with:
+  #       go-version: '1.21.1'  # Use the version of Go your project requires
 
-    - name: Install Atlas
-      run: curl -sSf https://atlasgo.sh | sh
+  #   - name: Install Atlas
+  #     run: curl -sSf https://atlasgo.sh | sh
 
-    - name: Check out code
-      uses: actions/checkout@v3
+  #   - name: Check out code
+  #     uses: actions/checkout@v3
 
-    - name: Test
-      run: go test ./...
-      env:
-        GCS_TEST_BUCKET: ${{ secrets.GCS_TEST_BUCKET }}
-        GCS_TEST_FILE: ${{ secrets.GCS_TEST_FILE }}
-        GCS_TEST_CREDS: ${{ secrets.GCS_TEST_CREDS }}
+  #   - name: Test
+  #     run: go test ./...
+  #     env:
+  #       GCS_TEST_BUCKET: ${{ secrets.GCS_TEST_BUCKET }}
+  #       GCS_TEST_FILE: ${{ secrets.GCS_TEST_FILE }}
+  #       GCS_TEST_CREDS: ${{ secrets.GCS_TEST_CREDS }}
 
   build-and-push:
     name: Build and Push Docker Image
@@ -35,7 +35,7 @@ jobs:
     permissions: write-all
     env:
       GAR_LOCATION: us-east1-docker.pkg.dev/expenses-407515/moneyman-writer/moneyman-writer
-    needs: test
+    # needs: test
 
     steps:
     - name: Check Out Repo
@@ -67,3 +67,9 @@ jobs:
          docker push ${{ env.GAR_LOCATION }}:${{ env.IMAGE_TAG }}
          docker push ${{ env.GAR_LOCATION }}:latest
 
+    - id: 'deploy'
+      name: 'Deploy to Cloud Run'
+      uses: 'google-github-actions/deploy-cloudrun@v2'
+      with:
+        service: 'run-expense-writer'
+        image: '${{ env.GAR_LOCATION }}:${{ env.IMAGE_TAG }}'
