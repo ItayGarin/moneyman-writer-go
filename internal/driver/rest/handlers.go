@@ -11,12 +11,14 @@ import (
 )
 
 type RestController struct {
-	svc *core.Service
+	svc        *core.Service
+	downloader core.ObjectDownloader
 }
 
-func NewRestController(svc *core.Service) *RestController {
+func NewRestController(svc *core.Service, d core.ObjectDownloader) *RestController {
 	return &RestController{
-		svc: svc,
+		svc:        svc,
+		downloader: d,
 	}
 }
 
@@ -36,7 +38,7 @@ func (c *RestController) HandleGcsTransactionsUploadedEvent(w http.ResponseWrite
 		return
 	}
 
-	err = c.svc.SaveNewTransactionsFromObjectFile(r.Context(), &model.TransactionsFileUploadedEvent{
+	err = c.svc.SaveNewTransactionsFromObjectFile(r.Context(), c.downloader, &model.TransactionsFileUploadedEvent{
 		Bucket:      event.Bucket,
 		Name:        event.Name,
 		TimeCreated: event.TimeCreated,

@@ -5,7 +5,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN go build -o /main ./cmd
+RUN go build -o /main ./cmd/server
 
 FROM alpine:latest
 COPY --from=builder /main .

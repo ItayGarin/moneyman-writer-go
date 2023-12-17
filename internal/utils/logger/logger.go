@@ -9,6 +9,14 @@ func Init() {
 	logger, _ := zap.NewProduction()
 	defer logger.Sync() // flushes buffer, if any
 	x = logger.Sugar()
+	isInit = true
+}
+
+func InitDev() {
+	logger, _ := zap.NewDevelopment()
+	defer logger.Sync() // flushes buffer, if any
+	x = logger.Sugar()
+	isInit = true
 }
 
 func Logger() *zap.SugaredLogger {

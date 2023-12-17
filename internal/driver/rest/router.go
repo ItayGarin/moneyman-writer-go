@@ -27,9 +27,9 @@ func getLogger() *httplog.Logger {
 	})
 }
 
-func MakeRouter(svc *core.Service) *Router {
+func MakeRouter(svc *core.Service, downloader core.ObjectDownloader) *Router {
 	r := chi.NewRouter()
-	controller := NewRestController(svc)
+	controller := NewRestController(svc, downloader)
 
 	r.Use(middleware.Recoverer)
 	r.Use(httplog.RequestLogger(getLogger()))

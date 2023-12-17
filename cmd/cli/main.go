@@ -3,13 +3,11 @@ package main
 import (
 	"context"
 	"moneyman-writer-go/internal/adapter/db"
-	cloud_storage "moneyman-writer-go/internal/adapter/google/cloud-storage"
 	"moneyman-writer-go/internal/core"
-	"moneyman-writer-go/internal/driver/rest"
 	x "moneyman-writer-go/internal/utils/logger"
+	"os"
 
 	"github.com/kelseyhightower/envconfig"
-	"google.golang.org/api/option"
 )
 
 type Config struct {
@@ -18,8 +16,6 @@ type Config struct {
 	PostgresUrl     string `required:"true" split_words:"true"`
 	EnableMigration bool   `default:"false" split_words:"true"`
 	MigrationsDir   string `required:"false" split_words:"true"`
-
-	GcsCreds string `required:"false" split_words:"true"`
 }
 
 func parseEnvConfig() *Config {
@@ -33,6 +29,7 @@ func parseEnvConfig() *Config {
 }
 
 func main() {
+	x.InitDev()
 	ctx := context.Background()
 	c := parseEnvConfig()
 
@@ -54,16 +51,26 @@ func main() {
 	}
 
 	repo := db.NewPostgresTransactionRepo(client)
-	opts := []option.ClientOption{}
-	if c.GcsCreds != "" {
-		opts = append(opts, option.WithCredentialsJSON([]byte(c.GcsCreds)))
-	}
-	downloader, err := cloud_storage.NewGcsDownloader(ctx, opts...)
-	if err != nil {
-		x.Logger().Fatalw("failed to initialize gcs downloader", "error", err)
+	svc := core.NewService(repo)
+
+	if len(os.Args) < 2 {
+		x.Logger().Fatalw("no files provided")
+		return
 	}
 
-	svc := core.NewService(repo, downloader)
-	r := rest.MakeRouter(svc)
-	r.Serve(c.Port)
+	files := os.Args[1:]
+	for _, file := range files {
+		x.Logger().Infow("reading file", "file", file)
+		data, err := os.ReadFile(file)
+		if err != nil {
+			x.Logger().Fatalw("failed to read file", "error", err)
+		}
+
+		err = svc.SaveNewTransactionsFromBlob(ctx, data)
+		if err != nil {
+			x.Logger().Fatalw("failed to save transactions", "error", err)
+		}
+	}
+
+	x.Logger().Infow("saved all transactions", "count", len(files))
 }

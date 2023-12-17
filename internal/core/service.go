@@ -17,31 +17,33 @@ type ObjectDownloader interface {
 }
 
 type Service struct {
-	repo       TransactionRepo
-	downloader ObjectDownloader
+	repo TransactionRepo
 }
 
-func NewService(repo TransactionRepo, downloader ObjectDownloader) *Service {
+func NewService(repo TransactionRepo) *Service {
 	return &Service{
-		repo:       repo,
-		downloader: downloader,
+		repo: repo,
 	}
 }
 
-func (s *Service) SaveNewTransactionsFromObjectFile(ctx context.Context, event *model.TransactionsFileUploadedEvent) error {
+func (s *Service) SaveNewTransactionsFromObjectFile(ctx context.Context, d ObjectDownloader, event *model.TransactionsFileUploadedEvent) error {
 	x.Logger().Infow("downloading object", "bucket", event.Bucket, "name", event.Name)
-	data, err := s.downloader.Download(ctx, event.Bucket, event.Name)
+	data, err := d.Download(ctx, event.Bucket, event.Name)
 	if err != nil {
 		return err
 	}
 
-	x.Logger().Infow("parsing transactions", "bucket", event.Bucket, "name", event.Name, "file_size", len(data))
-	txns, err := parseTransactions(data)
+	return s.SaveNewTransactionsFromBlob(ctx, data)
+}
+
+func (s *Service) SaveNewTransactionsFromBlob(ctx context.Context, blob []byte) error {
+	x.Logger().Infow("parsing transactions", "file_size", len(blob))
+	txns, err := parseTransactions(blob)
 	if err != nil {
 		return err
 	}
 
-	x.Logger().Infow("saving transactions", "bucket", event.Bucket, "name", event.Name, "count", len(txns))
+	x.Logger().Infow("saving transactions", "count", len(txns))
 	for _, txn := range txns {
 		err = s.repo.Save(ctx, &txn)
 		if err != nil {
@@ -49,7 +51,7 @@ func (s *Service) SaveNewTransactionsFromObjectFile(ctx context.Context, event *
 		}
 	}
 
-	x.Logger().Infow("saved all transactions", "bucket", event.Bucket, "name", event.Name, "count", len(txns))
+	x.Logger().Infow("saved all transactions", "count", len(txns))
 	return nil
 }
 

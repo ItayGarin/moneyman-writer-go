@@ -51,8 +51,8 @@ func TestService_saveNewTransactionsFromObjectFile(t *testing.T) {
 	downloader, err := cloud_storage.NewGcsDownloader(ctx, option.WithCredentialsJSON([]byte(creds)))
 	require.NoError(t, err)
 
-	svc := core.NewService(repo, downloader)
-	err = svc.SaveNewTransactionsFromObjectFile(ctx, &model.TransactionsFileUploadedEvent{
+	svc := core.NewService(repo)
+	err = svc.SaveNewTransactionsFromObjectFile(ctx, downloader, &model.TransactionsFileUploadedEvent{
 		TimeCreated: time.Now(),
 		Bucket:      bucket,
 		Name:        path,
