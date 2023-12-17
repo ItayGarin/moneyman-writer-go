@@ -20,10 +20,6 @@ func NewRestController(svc *core.Service) *RestController {
 	}
 }
 
-func (c *RestController) HandleHealth(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("OK"))
-}
-
 func (c *RestController) HandleGcsTransactionsUploadedEvent(w http.ResponseWriter, r *http.Request) {
 	data, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -50,4 +46,6 @@ func (c *RestController) HandleGcsTransactionsUploadedEvent(w http.ResponseWrite
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	w.WriteHeader(http.StatusOK)
 }

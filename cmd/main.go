@@ -13,10 +13,11 @@ import (
 )
 
 type Config struct {
-	Port          int    `default:"8080"`
-	PostgresUrl   string `required:"true" split_words:"true"`
-	MigrationsDir string `required:"true" split_words:"true"`
-	GcsCreds      string `required:"true" split_words:"true"`
+	Port            int    `default:"8080"`
+	PostgresUrl     string `required:"true" split_words:"true"`
+	MigrationsDir   string `required:"true" split_words:"true"`
+	GcsCreds        string `required:"true" split_words:"true"`
+	EnableMigration bool   `default:"false" split_words:"true"`
 }
 
 func parseEnvConfig() *Config {
@@ -37,9 +38,13 @@ func main() {
 	if err != nil {
 		x.Logger().Fatalw("failed to initialize db client", "error", err)
 	}
-	err = db.RunMigrations(ctx, c.PostgresUrl, c.MigrationsDir)
-	if err != nil {
-		x.Logger().Fatalw("failed to run migrations", "error", err)
+	if c.EnableMigration {
+		x.Logger().Infow("running migrations", "dir", c.MigrationsDir)
+		err = db.RunMigrations(ctx, c.PostgresUrl, c.MigrationsDir)
+		if err != nil {
+			x.Logger().Fatalw("failed to run migrations", "error", err)
+		}
+		x.Logger().Infow("finished migrating", "dir", c.MigrationsDir)
 	}
 
 	repo := db.NewPostgresTransactionRepo(client)

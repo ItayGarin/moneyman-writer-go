@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"moneyman-writer-go/internal/model"
+	x "moneyman-writer-go/internal/utils/logger"
 )
 
 type TransactionRepo interface {
@@ -28,22 +29,27 @@ func NewService(repo TransactionRepo, downloader ObjectDownloader) *Service {
 }
 
 func (s *Service) SaveNewTransactionsFromObjectFile(ctx context.Context, event *model.TransactionsFileUploadedEvent) error {
+	x.Logger().Infow("downloading object", "bucket", event.Bucket, "name", event.Name)
 	data, err := s.downloader.Download(ctx, event.Bucket, event.Name)
 	if err != nil {
 		return err
 	}
 
+	x.Logger().Infow("parsing transactions", "bucket", event.Bucket, "name", event.Name, "file_size", len(data))
 	txns, err := parseTransactions(data)
 	if err != nil {
 		return err
 	}
 
+	x.Logger().Infow("saving transactions", "bucket", event.Bucket, "name", event.Name, "count", len(txns))
 	for _, txn := range txns {
 		err = s.repo.Save(ctx, &txn)
 		if err != nil {
 			return fmt.Errorf("failed to save transaction: %s: %w", txn.Hash, err)
 		}
 	}
+
+	x.Logger().Infow("saved all transactions", "bucket", event.Bucket, "name", event.Name, "count", len(txns))
 	return nil
 }
 
