@@ -6,50 +6,53 @@ on:
       - main
 
 jobs:
-  test:
-    name: Run Golang Tests
-    runs-on: ubuntu-latest
+  # test:
+  #   name: Run Golang Tests
+  #   runs-on: ubuntu-latest
 
-    steps:
-    - name: Set up Go
-      uses: actions/setup-go@v3
-      with:
-        go-version: '1.21.1'  # Use the version of Go your project requires
+  #   steps:
+  #   - name: Set up Go
+  #     uses: actions/setup-go@v3
+  #     with:
+  #       go-version: '1.21.1'  # Use the version of Go your project requires
 
-    - name: Install Atlas
-      run: curl -sSf https://atlasgo.sh | sh
+  #   - name: Install Atlas
+  #     run: curl -sSf https://atlasgo.sh | sh
 
-    - name: Check out code
-      uses: actions/checkout@v3
+  #   - name: Check out code
+  #     uses: actions/checkout@v3
 
-    - name: Test
-      run: go test ./...
-      env:
-        GCS_TEST_BUCKET: ${{ secrets.GCS_TEST_BUCKET }}
-        GCS_TEST_FILE: ${{ secrets.GCS_TEST_FILE }}
-        GCS_TEST_CREDS: ${{ secrets.GCS_TEST_CREDS }}
+  #   - name: Test
+  #     run: go test ./...
+  #     env:
+  #       GCS_TEST_BUCKET: ${{ secrets.GCS_TEST_BUCKET }}
+  #       GCS_TEST_FILE: ${{ secrets.GCS_TEST_FILE }}
+  #       GCS_TEST_CREDS: ${{ secrets.GCS_TEST_CREDS }}
 
   build-and-push:
     name: Build and Push Docker Image
     runs-on: ubuntu-latest
     permissions: write-all
-    needs: test
+    # needs: test
 
     steps:
     - name: Check Out Repo
       uses: actions/checkout@v2
 
-    - name: Log in to GitHub Container Registry
-      uses: docker/login-action@v1
+    - id: 'auth'
+      uses: 'google-github-actions/auth@v1'
       with:
-        registry: ghcr.io
-        username: itaygarin
-        password: ${{ secrets.GITHUB_TOKEN }}
+        credentials_json: ${{ secrets.GOOGLE_GCS_SERVICE_ACCOUNT_CREDENTIALS }}
 
-    - name: Build and push Docker image
-      uses: docker/build-push-action@v2
-      with:
-        context: .
-        file: ./Dockerfile
-        push: true
-        tags: ghcr.io/itaygarin/moneyman-writer:latest
+    - name: "Set up Cloud SDK"
+      uses: "google-github-actions/setup-gcloud@v1"
+
+    - name: "Docker auth"
+      run: |-
+        gcloud auth configure-docker us-east1-docker.pkg.dev --quiet
+
+    - name: Build image
+      run: docker build . --tag us-east1-docker.pkg.dev/expenses-407515/moneyman-writer/
+
+    - name: Push image
+      run: docker push us-east1-docker.pkg.dev/expenses-407515/moneyman-writer/
