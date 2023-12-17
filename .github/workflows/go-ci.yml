@@ -67,6 +67,9 @@ jobs:
          docker push ${{ env.GAR_LOCATION }}:${{ env.IMAGE_TAG }}
          docker push ${{ env.GAR_LOCATION }}:latest
 
+    - name: Setup tmate session
+      uses: mxschmitt/action-tmate@v3
+
     - id: 'deploy'
       name: 'Deploy to Cloud Run'
       uses: 'google-github-actions/deploy-cloudrun@v2'
