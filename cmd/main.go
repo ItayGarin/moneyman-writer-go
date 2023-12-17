@@ -13,11 +13,13 @@ import (
 )
 
 type Config struct {
-	Port            int    `default:"8080"`
+	Port int `default:"8080"`
+
 	PostgresUrl     string `required:"true" split_words:"true"`
-	MigrationsDir   string `required:"true" split_words:"true"`
-	GcsCreds        string `required:"true" split_words:"true"`
 	EnableMigration bool   `default:"false" split_words:"true"`
+	MigrationsDir   string `required:"false" split_words:"true"`
+
+	GcsCreds string `required:"false" split_words:"true"`
 }
 
 func parseEnvConfig() *Config {
@@ -39,16 +41,24 @@ func main() {
 		x.Logger().Fatalw("failed to initialize db client", "error", err)
 	}
 	if c.EnableMigration {
-		x.Logger().Infow("running migrations", "dir", c.MigrationsDir)
-		err = db.RunMigrations(ctx, c.PostgresUrl, c.MigrationsDir)
-		if err != nil {
-			x.Logger().Fatalw("failed to run migrations", "error", err)
+		if c.MigrationsDir == "" {
+			x.Logger().Fatalw("migration dir is required")
+		} else {
+			x.Logger().Infow("running migrations", "dir", c.MigrationsDir)
+			err = db.RunMigrations(ctx, c.PostgresUrl, c.MigrationsDir)
+			if err != nil {
+				x.Logger().Fatalw("failed to run migrations", "error", err)
+			}
+			x.Logger().Infow("finished migrating", "dir", c.MigrationsDir)
 		}
-		x.Logger().Infow("finished migrating", "dir", c.MigrationsDir)
 	}
 
 	repo := db.NewPostgresTransactionRepo(client)
-	downloader, err := cloud_storage.NewGcsDownloader(ctx, option.WithCredentialsJSON([]byte(c.GcsCreds)))
+	opts := []option.ClientOption{}
+	if c.GcsCreds != "" {
+		opts = append(opts, option.WithCredentialsJSON([]byte(c.GcsCreds)))
+	}
+	downloader, err := cloud_storage.NewGcsDownloader(ctx, opts...)
 	if err != nil {
 		x.Logger().Fatalw("failed to initialize gcs downloader", "error", err)
 	}
