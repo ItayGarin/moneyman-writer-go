@@ -47,3 +47,7 @@ func (r *PostgresTransactionRepo) Save(ctx context.Context, txn *model.Transacti
 	params := txnToInsertParams(txn)
 	return r.s.InsertTransaction(ctx, *params)
 }
+
+func (r *PostgresTransactionRepo) GetUncategorizedDescriptions(ctx context.Context) ([]string, error) {
+	return r.s.GetUncategorizedDescriptions(ctx)
+}

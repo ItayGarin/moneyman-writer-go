@@ -24,3 +24,7 @@ INSERT INTO exp_transactions (
 ) VALUES 
 ( $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 ON CONFLICT (hash) DO NOTHING;
+
+-- name: GetUncategorizedDescriptions :many
+SELECT DISTINCT(description) FROM exp_transactions
+WHERE description not in (SELECT description FROM exp_desc_to_business);

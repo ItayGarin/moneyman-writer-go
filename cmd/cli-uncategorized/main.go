@@ -2,10 +2,11 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"moneyman-writer-go/internal/adapter/db"
-	"moneyman-writer-go/internal/core"
 	x "moneyman-writer-go/internal/utils/logger"
 	"os"
+	"strings"
 
 	"github.com/kelseyhightower/envconfig"
 )
@@ -14,6 +15,7 @@ type Config struct {
 	PostgresUrl     string `required:"true" split_words:"true"`
 	EnableMigration bool   `default:"false" split_words:"true"`
 	MigrationsDir   string `required:"false" split_words:"true"`
+	Inserts         bool   `default:"false" split_words:"true"`
 }
 
 func parseEnvConfig() *Config {
@@ -30,6 +32,10 @@ func main() {
 	x.InitDev()
 	ctx := context.Background()
 	c := parseEnvConfig()
+
+	if len(os.Args) < 2 {
+		x.Logger().Fatalw("missing output file")
+	}
 
 	client, err := db.NewClient(ctx, c.PostgresUrl)
 	if err != nil {
@@ -49,26 +55,28 @@ func main() {
 	}
 
 	repo := db.NewPostgresTransactionRepo(client)
-	svc := core.NewService(repo)
-
-	if len(os.Args) < 2 {
-		x.Logger().Fatalw("no files provided")
-		return
+	uncategorized, err := repo.GetUncategorizedDescriptions(ctx)
+	if err != nil {
+		x.Logger().Fatalw("failed to get uncategorized descriptions", "error", err)
 	}
 
-	files := os.Args[1:]
-	for _, file := range files {
-		x.Logger().Infow("reading file", "file", file)
-		data, err := os.ReadFile(file)
-		if err != nil {
-			x.Logger().Fatalw("failed to read file", "error", err)
+	var lines []string
+	if c.Inserts {
+		for _, desc := range uncategorized {
+			lines = append(lines, "INSERT INTO exp_businesses (name, category, sub_category) VALUES ('', '', '');")
+			lines = append(lines, fmt.Sprintf("INSERT INTO exp_desc_to_business (description, business_name) VALUES ('%s', '');", desc))
+			lines = append(lines, "")
 		}
-
-		err = svc.SaveNewTransactionsFromBlob(ctx, data)
-		if err != nil {
-			x.Logger().Fatalw("failed to save transactions", "error", err)
-		}
+	} else {
+		lines = uncategorized
 	}
 
-	x.Logger().Infow("saved all transactions", "count", len(files))
+	out := strings.Join(lines, "\n")
+	outFile := os.Args[1]
+	err = os.WriteFile(outFile, []byte(out), 0644)
+	if err != nil {
+		x.Logger().Fatalw("failed to write output file", "error", err)
+	}
+
+	x.Logger().Infow("finished writing output file", "file", outFile)
 }

@@ -80,6 +80,31 @@ func (q *Queries) GetTransactionByHash(ctx context.Context, hash string) (ExpTra
 	return i, err
 }
 
+const getUncategorizedDescriptions = `-- name: GetUncategorizedDescriptions :many
+SELECT DISTINCT(description) FROM exp_transactions
+WHERE description not in (SELECT description FROM exp_desc_to_business)
+`
+
+func (q *Queries) GetUncategorizedDescriptions(ctx context.Context) ([]string, error) {
+	rows, err := q.db.Query(ctx, getUncategorizedDescriptions)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var description string
+		if err := rows.Scan(&description); err != nil {
+			return nil, err
+		}
+		items = append(items, description)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const insertTransaction = `-- name: InsertTransaction :exec
 INSERT INTO exp_transactions (
     identifier, 
